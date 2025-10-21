@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('forum_comments', function (Blueprint $table) {
+            $table->id()->primary();
+            $table->id('thread_id');
+            $table->id('commented_by_id');
+            $table->text('comment');
+            $table->timestamps();
+            $table->foreign('thread_id')->references('id')->on('forum_threads')->onDelete('cascade');
+            $table->foreign('commented_by_id')->references('id')->on('users')->onDelete('cascade');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('forum_comments');
+    }
+};
