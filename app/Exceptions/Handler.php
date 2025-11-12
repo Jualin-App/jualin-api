@@ -5,6 +5,8 @@ namespace App\Exceptions;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use App\Http\Responses\ApiResponse;
+use Illuminate\Validation\ValidationException;
 
 class Handler extends ExceptionHandler
 {
@@ -27,18 +29,26 @@ class Handler extends ExceptionHandler
     {
         // Force JSON response for API clients
         if ($request->expectsJson()) {
+            // Handle validation exceptions separately to return structured errors
+            if ($e instanceof ValidationException) {
+                $errors = $e->errors();
+                $message = $e->getMessage() ?: 'The given data was invalid.';
+                return ApiResponse::error($message, $errors, 422);
+            }
 
             $status = $e instanceof HttpExceptionInterface
                 ? $e->getStatusCode()
                 : 500;
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'type' => class_basename($e),
-                'errors' => null,
-                'trace' => config('app.debug') ? $e->getTrace() : null,
-            ], $status);
+            $message = $e->getMessage() ?: ($status === 500 ? 'Server Error' : 'Error');
+
+            // Include trace only in debug mode inside the errors payload
+            $errorsPayload = null;
+            if (config('app.debug')) {
+                $errorsPayload = ['trace' => $e->getTrace()];
+            }
+
+            return ApiResponse::error($message, $errorsPayload, $status);
         }
 
         return parent::render($request, $e);
