@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ProductController;
 
 Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -26,6 +27,11 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
         Route::delete('/users/{id}/delete', [UserController::class, 'destroy']);
     });
 
+});
+
+// Public product listing and search (no auth required)
+Route::prefix('v1')->group(function () {
+    Route::get('/products', [ProductController::class, 'index']);
 });
 
 Route::fallback(function () {
