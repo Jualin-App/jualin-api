@@ -31,22 +31,30 @@ class ProductController extends Controller
     {
         $filters = $request->validated();
 
-        // Temporary debug log to compare requests from Insomnia vs browser
-        try {
-            Log::info('Product index request', [
-                'filters' => $filters,
-                'headers' => $request->header(),
-                'ip' => $request->ip(),
-            ]);
-        } catch (\Throwable $e) {
-            // ignore logging errors
-        }
+        Log::info('Product index request', [
+            'filters' => $filters,
+            'client'  => $request->ip(),
+        ]);
 
-        $query = $this->repo->filter($filters);
+        // Repo returns a LengthAwarePaginator
+        $paginated = $this->repo->getAll($filters);
 
-        // Return a simple collection (no pagination metadata) to match ApiResponse data shape
-        $products = $query->get();
+        // items as plain array (no nested pagination object)
+        $items = $paginated->items();
 
-        return ApiResponse::success('Products retrieved', $products);
+        // build meta to match the desired JS pagination shape
+        $meta = [
+            'totalItems'  => $paginated->total(),
+            'totalPages'  => $paginated->lastPage(),
+            'currentPage' => $paginated->currentPage(),
+            'limit'       => $paginated->perPage(),
+            'sortBy'      => $filters['sort_by'] ?? 'created_at',
+            'sortOrder'   => isset($filters['sort_dir']) ? strtolower($filters['sort_dir']) : 'desc',
+        ];
+
+        return ApiResponse::success('Products retrieved', [
+            'meta' => $meta,
+            'data' => $items,
+        ]);
     }
 }

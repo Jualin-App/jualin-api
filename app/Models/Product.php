@@ -24,6 +24,11 @@ class Product extends Model
         'status',
     ];
 
+    protected $casts = [
+        'price' => 'integer',
+        'stock_quantity' => 'integer',
+    ];
+
     public function seller()
     {
         return $this->belongsTo(User::class, 'seller_id');

@@ -3,26 +3,39 @@
 namespace App\Repositories;
 
 use App\Models\Product;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 class ProductRepository
 {
-    public function query()
+    /**
+     * Get all products with optional filters and pagination.
+     *
+     * Supported filters:
+     * - category
+     * - location (matches seller.city or seller.region)
+     * - name (partial match)
+     * - price_min
+     * - price_max
+     * - sort_by (allowed: price, name, created_at)
+     * - sort_dir (asc|desc)
+     * - per_page (int)
+     *
+     * @param  array  $filters
+     * @return LengthAwarePaginator
+     */
+    public function getAll(array $filters = []): LengthAwarePaginator
     {
-        return Product::query();
-    }
-
-    public function filter(array $filters)
-    {
-        $q = $this->query();
+        $q = Product::query();
 
         if (!empty($filters['category'])) {
             $q->where('category', $filters['category']);
         }
 
         if (!empty($filters['location'])) {
-            // assuming seller's city or region is stored on users table and relation exists
-            $q->whereHas('seller', function ($sq) use ($filters) {
-                $sq->where('city', $filters['location'])->orWhere('region', $filters['location']);
+            $location = $filters['location'];
+            $q->whereHas('seller', function ($sq) use ($location) {
+                $sq->where('city', $location)->orWhere('region', $location);
             });
         }
 
@@ -30,23 +43,62 @@ class ProductRepository
             $q->where('name', 'like', '%' . $filters['name'] . '%');
         }
 
-        if (!empty($filters['price_min'])) {
+        if (isset($filters['price_min']) && $filters['price_min'] !== '') {
             $q->where('price', '>=', $filters['price_min']);
         }
 
-        if (!empty($filters['price_max'])) {
+        if (isset($filters['price_max']) && $filters['price_max'] !== '') {
             $q->where('price', '<=', $filters['price_max']);
         }
 
-        // Allow ordering only by a safe whitelist to avoid injection and errors
         $allowedSort = ['price', 'name', 'created_at'];
         if (!empty($filters['sort_by']) && in_array($filters['sort_by'], $allowedSort, true)) {
-            $direction = in_array(strtolower($filters['sort_dir'] ?? 'asc'), ['asc', 'desc'], true)
-                ? strtolower($filters['sort_dir'])
-                : 'asc';
+            $direction = 'asc';
+            if (!empty($filters['sort_dir']) && in_array(strtolower($filters['sort_dir']), ['asc', 'desc'], true)) {
+                $direction = strtolower($filters['sort_dir']);
+            }
             $q->orderBy($filters['sort_by'], $direction);
+        } else {
+            $q->orderByDesc('created_at');
         }
 
-        return $q;
+        $perPage = isset($filters['per_page']) && (int) $filters['per_page'] > 0
+            ? (int) $filters['per_page']
+            : 10;
+
+        return $q->paginate($perPage);
+    }
+
+    public function find(int $id): ?Product
+    {
+        return Product::find($id);
+    }
+
+    public function create(array $data): Product
+    {
+        return Product::create($data);
+    }
+
+    public function update(int $id, array $data): ?Product
+    {
+        $product = $this->find($id);
+        if (!$product) {
+            return null;
+        }
+
+        $product->fill($data);
+        $product->save();
+
+        return $product;
+    }
+
+    public function delete(int $id): bool
+    {
+        $product = $this->find($id);
+        if (!$product) {
+            return false;
+        }
+
+        return (bool) $product->delete();
     }
 }
