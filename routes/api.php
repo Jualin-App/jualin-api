@@ -36,6 +36,11 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
 });
 
+// Public product listing and search (no auth required)
+Route::prefix('v1')->group(function () {
+    Route::get('/products', [ProductController::class, 'index']);
+});
+
 Route::fallback(function () {
     return response()->json([
         'success' => false,

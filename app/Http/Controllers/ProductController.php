@@ -2,60 +2,59 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProductStoreRequest;
-use App\Http\Requests\ProductUpdateRequest;
-use App\Http\Responses\ProductResponse;
-use App\Http\Responses\ApiResponse;
+use App\Http\Requests\ProductFilterRequest;
 use App\Repositories\ProductRepository;
-use Illuminate\Http\JsonResponse;
+use App\Http\Responses\ApiResponse;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
-    protected $productRepository;
+    protected $repo;
 
-    public function __construct(ProductRepository $productRepository)
+    public function __construct(ProductRepository $repo)
     {
-        $this->productRepository = $productRepository;
+        $this->repo = $repo;
     }
 
-    public function index(): JsonResponse
+    /**
+     * GET /v1/products
+     * Query params:
+     * - category
+     * - location (city or region)
+     * - name (partial match)
+     * - price_min
+     * - price_max
+     * - sort_by (price, name, created_at)
+     * - sort_dir (asc|desc)
+     */
+    public function index(ProductFilterRequest $request)
     {
-        $products = $this->productRepository->getAll();
-        return ApiResponse::success('Products retrieved successfully', ProductResponse::collection($products));
-    }
+        $filters = $request->validated();
 
-    public function store(ProductStoreRequest $request): JsonResponse
-    {
-        $product = $this->productRepository->create($request->validated());
-        return ApiResponse::success('Product created successfully', new ProductResponse($product), 201);
-    }
+        Log::info('Product index request', [
+            'filters' => $filters,
+            'client'  => $request->ip(),
+        ]);
 
-    public function show($id): JsonResponse
-    {
-        $product = $this->productRepository->find($id);
-        if (!$product) {
-            return ApiResponse::error('Product not found', null, 404);
-        }
-        return ApiResponse::success('Product retrieved successfully', new ProductResponse($product));
-    }
+        // Repo returns a LengthAwarePaginator
+        $paginated = $this->repo->getAll($filters);
 
-    public function update(ProductUpdateRequest $request, $id): JsonResponse
-    {
-        $product = $this->productRepository->find($id);
-        if (!$product) {
-            return ApiResponse::error('Product not found', null, 404);
-        }
-        $updatedProduct = $this->productRepository->update($id, $request->validated());
-        return ApiResponse::success('Product updated successfully', new ProductResponse($updatedProduct));
-    }
+        // items as plain array (no nested pagination object)
+        $items = $paginated->items();
 
-    public function destroy($id): JsonResponse
-    {
-        $product = $this->productRepository->find($id);
-        if (!$product) {
-            return ApiResponse::error('Product not found', null, 404);
-        }
-        $this->productRepository->delete($id);
-        return ApiResponse::success('Product deleted successfully', null);
+        // build meta to match the desired JS pagination shape
+        $meta = [
+            'totalItems'  => $paginated->total(),
+            'totalPages'  => $paginated->lastPage(),
+            'currentPage' => $paginated->currentPage(),
+            'limit'       => $paginated->perPage(),
+            'sortBy'      => $filters['sort_by'] ?? 'created_at',
+            'sortOrder'   => isset($filters['sort_dir']) ? strtolower($filters['sort_dir']) : 'desc',
+        ];
+
+        return ApiResponse::success('Products retrieved', [
+            'meta' => $meta,
+            'data' => $items,
+        ]);
     }
 }
