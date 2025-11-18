@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Responses\ApiResponse;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,13 +21,43 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
 
+        $exceptions->render(function (AuthenticationException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return ApiResponse::error(
+                    'Unauthenticated.',
+                    null,
+                    401
+                );
+            }
+        });
+
         // Handle Validation Exception (422)
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $e->errors(),
-            ], 422);
+            return ApiResponse::error(
+                'Validation error',
+                $e->errors(),
+                422
+            );
+        });
+
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return ApiResponse::error(
+                    $e->getMessage() ?: 'This action is unauthorized.',
+                    null,
+                    403
+                );
+            }
+        });
+
+        $exceptions->render(function (\Illuminate\Database\Eloquent\ModelNotFoundException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return ApiResponse::error(
+                    'Resource not found',
+                    null,
+                    404
+                );
+            }
         });
 
         // Handle All Other Exceptions (fallback JSON handler)
@@ -36,13 +68,11 @@ return Application::configure(basePath: dirname(__DIR__))
                     ? $e->getStatusCode()
                     : 500;
 
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                    'type' => class_basename($e),
-                    'errors' => method_exists($e, 'errors') ? $e->errors() : null,
-                    'trace' => config('app.debug') ? $e->getTrace() : null,
-                ], $status);
+                return ApiResponse::error(
+                    $e->getMessage() ?: 'Server Error',
+                    config('app.debug') ? ['trace' => $e->getTrace()] : null,
+                    $status
+                );
             }
         });
     })
