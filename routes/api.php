@@ -1,16 +1,19 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\TransactionController;
+use App\Http\Responses\ApiResponse;
+use Illuminate\Http\Request;
 
 Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
-    Route::apiResource('products', ProductController::class)->only(['index','show']);
+    Route::apiResource('products', ProductController::class)->only(['index', 'show']);
 
     Route::middleware('auth:api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -35,16 +38,31 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
         Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     });
 
+    Route::middleware('role:customer,admin')->group(function () {
+        Route::post('/transactions', [TransactionController::class, 'store']);
+    });
+
+    Route::get('/transactions', [TransactionController::class, 'index']);
+    Route::get('/transactions/{id}', [TransactionController::class, 'show']);
+
+    Route::middleware('role:customer,admin')->group(function () {
+        Route::post('/payments/create', [PaymentController::class, 'createPayment']);
+    });
+
+    Route::middleware('role:customer,admin,seller')->group(function () {
+        Route::get('/payments/status/{orderId}', [PaymentController::class, 'checkStatus']);
+    });
+
+    Route::post('/payments/notification', [PaymentController::class, 'handleNotification']);
 });
 
-// Public product listing and search (no auth required)
-Route::prefix('v1')->group(function () {
-    Route::get('/products', [ProductController::class, 'index']);
-});
-
-Route::fallback(function () {
-    return response()->json([
-        'success' => false,
-        'message' => 'API endpoint not found'
-    ], 404);
+Route::fallback(function (Request $request) {
+    return ApiResponse::error(
+        'API endpoint not found',
+        [
+            'requested_url' => $request->fullUrl(),
+            'method' => $request->method(),
+        ],
+        404
+    );
 });
