@@ -10,10 +10,7 @@
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
-<<<<<<< HEAD
-=======
         "midtrans/midtrans-php": "2.6",
->>>>>>> cfed16740225ac0b5e1e63de8693423748bf702f
         "tymon/jwt-auth": "^2.2"
     },
     "require-dev": {

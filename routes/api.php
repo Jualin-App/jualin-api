@@ -9,7 +9,6 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\Request;
 
-
 Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
@@ -52,7 +51,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::middleware('role:customer,admin,seller')->group(function () {
         Route::get('/payments/status/{orderId}', [PaymentController::class, 'checkStatus']);
     });
-
+    
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::post('/payments/notification', [PaymentController::class, 'handleNotification']);
 });
