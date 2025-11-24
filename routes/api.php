@@ -26,7 +26,6 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
-        Route::get('/users/{id}', [UserController::class, 'show']);
         Route::post('/users', [UserController::class, 'store']);
         Route::put('/users/{id}/update', [UserController::class, 'update']);
         Route::delete('/users/{id}/delete', [UserController::class, 'destroy']);
@@ -53,6 +52,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
         Route::get('/payments/status/{orderId}', [PaymentController::class, 'checkStatus']);
     });
 
+    Route::get('/users/{id}', [UserController::class, 'show']);
     Route::post('/payments/notification', [PaymentController::class, 'handleNotification']);
 });
 
