@@ -8,6 +8,8 @@ use Midtrans\Transaction as MidtransTransaction;
 use Midtrans\Notification;
 use App\Models\Transaction;
 use App\Models\Payment;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class MidtransService
@@ -118,6 +120,8 @@ class MidtransService
     private function updateTransactionStatus(Payment $payment, string $transactionStatus, ?string $fraudStatus): void
     {
         $transaction = $payment->transaction;
+        $oldStatus = $transaction->status;
+        $newStatus = null;
 
         switch ($transactionStatus) {
             case 'capture':
@@ -155,6 +159,7 @@ class MidtransService
             default:
                 break;
         }
+
         if ($newStatus) {
             $transaction->update(['status' => $newStatus]);
 

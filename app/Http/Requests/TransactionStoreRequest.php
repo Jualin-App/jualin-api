@@ -31,8 +31,39 @@ class TransactionStoreRequest extends FormRequest
                 },
             ],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
-            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.product_id' => [
+                'required',
+                'integer',
+                'exists:products,id',
+                function ($attribute, $value, $fail) {
+                    $product = \App\Models\Product::find($value);
+                    if ($product && $product->stock_quantity <= 0) {
+                        $fail('Product ' . $product->name . ' is out of stock.');
+                    }
+                },
+            ],
+            'items.*.quantity' => [
+                'required',
+                'integer',
+                'min:1',
+                function ($attribute, $value, $fail) {
+                    $segments = explode('.', $attribute);      
+                    $index = $segments[1] ?? null;
+
+                    if ($index !== null) {
+                        $productId = $this->input("items.{$index}.product_id");
+                        if ($productId) {
+                            $product = \App\Models\Product::find($productId);
+                            if ($product && $value > $product->stock_quantity) {
+                                $fail(
+                                    'Insufficient stock for ' . $product->name .
+                                        '. Available: ' . $product->stock_quantity
+                                );
+                            }
+                        }
+                    }
+                },
+            ],
         ];
     }
 
