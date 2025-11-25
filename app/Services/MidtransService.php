@@ -8,6 +8,8 @@ use Midtrans\Transaction as MidtransTransaction;
 use Midtrans\Notification;
 use App\Models\Transaction;
 use App\Models\Payment;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class MidtransService
@@ -106,7 +108,6 @@ class MidtransService
             $this->updateTransactionStatus($payment, $transactionStatus, $fraudStatus);
 
             return $payment->fresh();
-
         } catch (\Exception $e) {
             throw $e;
         }
@@ -119,6 +120,8 @@ class MidtransService
     private function updateTransactionStatus(Payment $payment, string $transactionStatus, ?string $fraudStatus): void
     {
         $transaction = $payment->transaction;
+        $oldStatus = $transaction->status;
+        $newStatus = null;
 
         switch ($transactionStatus) {
             case 'capture':
@@ -155,6 +158,37 @@ class MidtransService
 
             default:
                 break;
+        }
+
+        if ($newStatus) {
+            $transaction->update(['status' => $newStatus]);
+
+            $failedStatuses = ['failed', 'expired', 'cancelled', 'refunded'];
+            if (in_array($newStatus, $failedStatuses) && !in_array($oldStatus, $failedStatuses)) {
+                $this->restoreStock($transaction);
+            }
+        }
+    }
+
+    private function restoreStock(Transaction $transaction): void
+    {
+        try {
+            DB::beginTransaction();
+
+            $transaction->load('items.product');
+
+            foreach ($transaction->items as $item) {
+                if ($item->product) {
+                    $item->product->increment('stock_quantity', $item->quantity);
+                }
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to restore stock for transaction: ' . $transaction->id, [
+                'error' => $e->getMessage()
+            ]);
         }
     }
 

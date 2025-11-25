@@ -17,9 +17,14 @@ class UserController extends Controller
         $this->service = $service;
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return ApiResponse::success('Users fetched', $this->service->getAll());
+        $perPage = $request->input('per_page', 10);
+
+        return ApiResponse::success(
+            'Users retrieved',
+            $this->service->getAll($perPage)
+        );
     }
 
     public function show($id)
