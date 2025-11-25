@@ -24,21 +24,7 @@ class ProductController extends Controller
         $filters = $request->validated();
         $paginated = $this->repo->getAll($filters);
 
-        $items = $paginated->items();
-        
-        $meta = [
-            'totalItems'  => $paginated->total(),
-            'totalPages'  => $paginated->lastPage(),
-            'currentPage' => $paginated->currentPage(),
-            'limit'       => $paginated->perPage(),
-            'sortBy'      => $filters['sort_by'] ?? 'created_at',
-            'sortOrder'   => isset($filters['sort_dir']) ? strtolower($filters['sort_dir']) : 'desc',
-        ];
-
-        return ApiResponse::success('Products retrieved', [
-            'meta' => $meta,
-            'data' => $items,
-        ]);
+        return ApiResponse::success('Products retrieved', $paginated);
     }
 
     public function store(ProductStoreRequest $request): JsonResponse

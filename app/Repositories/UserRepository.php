@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class UserRepository
 {
@@ -29,6 +30,17 @@ class UserRepository
     public function findByUsername(string $username)
     {
         return User::where('username', $username)->first();
+    }
+
+    public function getAll(array $filters = []): LengthAwarePaginator
+    {
+        $q = User::query();
+
+        $perPage = isset($filters['per_page']) && (int) $filters['per_page'] > 0
+            ? (int) $filters['per_page']
+            : 10;
+
+        return $q->orderByDesc('created_at')->paginate($perPage);
     }
 
     public function all()

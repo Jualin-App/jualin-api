@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
-
 class TransactionController extends Controller
 {
     public function store(TransactionStoreRequest $request): JsonResponse
@@ -32,10 +31,21 @@ class TransactionController extends Controller
             $customerId = $user->id;
             $totalAmount = 0;
             $items = [];
+            $productsToUpdate = [];
 
             foreach ($request->items as $itemData) {
                 $product = \App\Models\Product::findOrFail($itemData['product_id']);
                 $quantity = $itemData['quantity'];
+
+                if ($product->stock_quantity < $quantity) {
+                    DB::rollBack();
+                    return ApiResponse::error(
+                        'Insufficient stock for ' . $product->name . '. Available: ' . $product->stock_quantity,
+                        null,
+                        400
+                    );
+                }
+
                 $subtotal = $product->price * $quantity;
                 $totalAmount += $subtotal;
 
@@ -44,6 +54,11 @@ class TransactionController extends Controller
                     'quantity' => $quantity,
                     'price_at_purchase' => $product->price,
                     'subtotal' => $subtotal,
+                ];
+
+                $productsToUpdate[] = [
+                    'product' => $product,
+                    'quantity' => $quantity,
                 ];
             }
 
@@ -59,6 +74,10 @@ class TransactionController extends Controller
                     'transaction_id' => $transaction->id,
                     ...$item,
                 ]);
+            }
+
+            foreach ($productsToUpdate as $item) {
+                $item['product']->decrement('stock_quantity', $item['quantity']);
             }
 
             DB::commit();
@@ -80,13 +99,15 @@ class TransactionController extends Controller
         }
     }
 
-    public function index(Request $request): JsonResponse
+    public function index(): JsonResponse
     {
         $user = Auth::user();
 
         $transactions = Transaction::with(['items.product', 'customer', 'seller', 'payment'])
-            ->where('customer_id', $user->id)
-            ->orWhere('seller_id', $user->id)
+            ->where(function ($query) use ($user) {
+                $query->where('customer_id', $user->id)
+                    ->orWhere('seller_id', $user->id);
+            })
             ->latest()
             ->paginate(10);
 
