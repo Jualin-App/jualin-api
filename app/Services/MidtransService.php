@@ -31,8 +31,8 @@ class MidtransService
 
 
         $payment = Payment::create([
-            'transaction_id' => $transaction->id,
             'order_id' => $orderId,
+            'transaction_id' => $transaction->id,
             'gross_amount' => $transaction->total_amount,
             'transaction_status' => 'pending',
         ]);
@@ -62,8 +62,10 @@ class MidtransService
         ];
 
         try {
-            $snapToken = Snap::getSnapToken($params);
-            $snapUrl = Snap::getSnapUrl($params);
+            $snapResponse = Snap::createTransaction($params);
+            $snapToken = $snapResponse->token;
+            $snapUrl = $snapResponse->redirect_url;
+
 
             $payment->update([
                 'snap_token' => $snapToken,
