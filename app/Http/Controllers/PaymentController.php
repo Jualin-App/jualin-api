@@ -60,6 +60,7 @@ class PaymentController extends Controller
                 [
                     'snap_token' => $result['snap_token'],
                     'snap_url' => $result['snap_url'],
+                    'order_id' => $result['order_id'],
                     'transaction_id' => $transaction->id,
                 ],
                 201
