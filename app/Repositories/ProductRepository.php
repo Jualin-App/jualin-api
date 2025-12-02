@@ -3,50 +3,42 @@
 namespace App\Repositories;
 
 use App\Models\Product;
+use Illuminate\Database\Eloquent\Collection;
 
 class ProductRepository
 {
-    public function query()
+    public function getAll(): Collection
     {
-        return Product::query();
+        return Product::orderByDesc('created_at')->get();
     }
 
-    public function filter(array $filters)
+    public function find(int $id): ?Product
     {
-        $q = $this->query();
+        return Product::find($id);
+    }
 
-        if (!empty($filters['category'])) {
-            $q->where('category', $filters['category']);
+    public function create(array $data): Product
+    {
+        return Product::create($data);
+    }
+
+    public function update(int $id, array $data): ?Product
+    {
+        $product = $this->find($id);
+        if (!$product) {
+            return null;
         }
+        $product->fill($data);
+        $product->save();
+        return $product;
+    }
 
-        if (!empty($filters['location'])) {
-            // assuming seller's city or region is stored on users table and relation exists
-            $q->whereHas('seller', function ($sq) use ($filters) {
-                $sq->where('city', $filters['location'])->orWhere('region', $filters['location']);
-            });
+    public function delete(int $id): bool
+    {
+        $product = $this->find($id);
+        if (!$product) {
+            return false;
         }
-
-        if (!empty($filters['name'])) {
-            $q->where('name', 'like', '%' . $filters['name'] . '%');
-        }
-
-        if (!empty($filters['price_min'])) {
-            $q->where('price', '>=', $filters['price_min']);
-        }
-
-        if (!empty($filters['price_max'])) {
-            $q->where('price', '<=', $filters['price_max']);
-        }
-
-        // Allow ordering only by a safe whitelist to avoid injection and errors
-        $allowedSort = ['price', 'name', 'created_at'];
-        if (!empty($filters['sort_by']) && in_array($filters['sort_by'], $allowedSort, true)) {
-            $direction = in_array(strtolower($filters['sort_dir'] ?? 'asc'), ['asc', 'desc'], true)
-                ? strtolower($filters['sort_dir'])
-                : 'asc';
-            $q->orderBy($filters['sort_by'], $direction);
-        }
-
-        return $q;
+        return (bool) $product->delete();
     }
 }

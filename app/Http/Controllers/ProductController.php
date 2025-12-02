@@ -1,52 +1,60 @@
 <?php
 
 namespace App\Http\Controllers;
-
-use App\Http\Requests\ProductFilterRequest;
-use App\Repositories\ProductRepository;
+use App\Http\Requests\ProductStoreRequest;
+use App\Http\Requests\ProductUpdateRequest;
+use App\Http\Responses\ProductResponse;
 use App\Http\Responses\ApiResponse;
-use Illuminate\Support\Facades\Log;
+use App\Repositories\ProductRepository;
+use Illuminate\Http\JsonResponse;
 
 class ProductController extends Controller
 {
-    protected $repo;
+    protected $productRepository;
 
-    public function __construct(ProductRepository $repo)
+    public function __construct(ProductRepository $productRepository)
     {
-        $this->repo = $repo;
+        $this->productRepository = $productRepository;
     }
 
-    /**
-     * GET /v1/products
-     * Query params:
-     * - category
-     * - location (city or region)
-     * - name (partial match)
-     * - price_min
-     * - price_max
-     * - sort_by (price, name, created_at)
-     * - sort_dir (asc|desc)
-     */
-    public function index(ProductFilterRequest $request)
+    public function index(): JsonResponse
     {
-        $filters = $request->validated();
+        $products = $this->productRepository->getAll();
+        return ApiResponse::success('Products retrieved successfully', ProductResponse::collection($products));
+    }
 
-        // Temporary debug log to compare requests from Insomnia vs browser
-        try {
-            Log::info('Product index request', [
-                'filters' => $filters,
-                'headers' => $request->header(),
-                'ip' => $request->ip(),
-            ]);
-        } catch (\Throwable $e) {
-            // ignore logging errors
+    public function store(ProductStoreRequest $request): JsonResponse
+    {
+        $product = $this->productRepository->create($request->validated());
+        return ApiResponse::success('Product created successfully', new ProductResponse($product), 201);
+    }
+
+    public function show($id): JsonResponse
+    {
+        $product = $this->productRepository->find($id);
+        if (!$product) {
+            return ApiResponse::error('Product not found', null, 404);
         }
+        return ApiResponse::success('Product retrieved successfully', new ProductResponse($product));
+    }
 
-        $query = $this->repo->filter($filters);
+    public function update(ProductUpdateRequest $request, $id): JsonResponse
+    {
+        $product = $this->productRepository->find($id);
+        if (!$product) {
+            return ApiResponse::error('Product not found', null, 404);
+        }
+        $updatedProduct = $this->productRepository->update($id, $request->validated());
+        return ApiResponse::success('Product updated successfully', new ProductResponse($updatedProduct));
+    }
 
-        // Return a simple collection (no pagination metadata) to match ApiResponse data shape
-        $products = $query->get();
-
-        return ApiResponse::success('Products retrieved', $products);
+    public function destroy($id): JsonResponse
+    {
+        $product = $this->productRepository->find($id);
+        if (!$product) {
+            return ApiResponse::error('Product not found', null, 404);
+        }
+        $this->productRepository->delete($id);
+        return ApiResponse::success('Product deleted successfully', null);
     }
 }

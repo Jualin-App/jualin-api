@@ -2,14 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
 
 class Product extends Model
 {
-    use HasFactory;
-
     protected $table = 'products';
 
     protected $fillable = [
@@ -23,9 +19,8 @@ class Product extends Model
         'condition',
         'status',
     ];
-
-    public function seller()
-    {
-        return $this->belongsTo(User::class, 'seller_id');
-    }
+    protected $casts = [
+        'price' => 'integer',
+        'stock_quantity' => 'integer',
+    ];
 }
