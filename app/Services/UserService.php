@@ -13,9 +13,9 @@ class UserService
         $this->users = $users;
     }
 
-    public function getAll()
+    public function getAll($perPage = 10)
     {
-        return $this->users->all();
+        return $this->users->getAll(['per_page' => $perPage]);
     }
 
     public function getById($id)
