@@ -23,7 +23,6 @@ class Product extends Model
         'condition',
         'status',
     ];
-
     protected $casts = [
         'price' => 'integer',
         'stock_quantity' => 'integer',
