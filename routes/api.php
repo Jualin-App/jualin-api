@@ -52,7 +52,6 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::middleware('role:customer,admin,seller')->group(function () {
         Route::get('/payments/status/{orderId}', [PaymentController::class, 'checkStatus']);
     });
-
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::post('/payments/notification', [PaymentController::class, 'handleNotification']);
 });
