@@ -41,6 +41,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     Route::middleware('role:customer,admin')->group(function () {
         Route::post('/transactions', [TransactionController::class, 'store']);
+        Route::get('/payments/history', [PaymentController::class, 'getPaymentsByUser']);    
     });
 
     Route::get('/transactions', [TransactionController::class, 'index']);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Responses\ApiResponse;
 use App\Models\Transaction;
+use App\Models\Payment;
 use App\Services\MidtransService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -124,5 +125,39 @@ class PaymentController extends Controller
                 500
             );
         }
+    }
+    
+    public function getPaymentsByUser(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        $payments = Payment::whereHas('transaction', function ($query) use ($user) {
+                $query->where('customer_id', $user->id);
+            })
+            ->get([
+                'id as payment_id',
+                'order_id',
+                'snap_token',
+                'snap_url',
+                'transaction_status',
+                'gross_amount'
+            ])
+            ->map(function ($payment) {
+                if ($payment->transaction_status !== 'pending') {
+                    $payment->snap_token = null;
+                    $payment->snap_url = null;
+                }
+                return $payment;
+            });
+
+        if ($payments->isEmpty()) {
+            return ApiResponse::error('No payments found', [], 404);
+        }
+
+        return ApiResponse::success(
+            'Payments retrieved successfully',
+            $payments,
+            200
+        );
     }
 }
