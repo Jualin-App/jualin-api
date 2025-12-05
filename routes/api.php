@@ -13,7 +13,9 @@ Route::prefix('v1')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/refresh-token', [AuthController::class, 'refreshToken']);
-    Route::apiResource('products', ProductController::class)->only(['index', 'show']);
+    Route::get('products', [ProductController::class, 'index']);
+    Route::get('products/{id}', [ProductController::class, 'show']);
+    Route::get('/users/{id}', [UserController::class, 'show']);
 
     Route::middleware('auth:api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -51,7 +53,6 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::middleware('role:customer,admin,seller')->group(function () {
         Route::get('/payments/status/{orderId}', [PaymentController::class, 'checkStatus']);
     });
-    Route::get('/users/{id}', [UserController::class, 'show']);
     Route::post('/payments/notification', [PaymentController::class, 'handleNotification']);
 });
 

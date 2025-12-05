@@ -142,20 +142,8 @@ class MidtransService
                 $transaction->update(['status' => 'pending']);
                 break;
 
-            case 'deny':
-                $transaction->update(['status' => 'failed']);
-                break;
-
             case 'expire':
                 $transaction->update(['status' => 'expired']);
-                break;
-
-            case 'cancel':
-                $transaction->update(['status' => 'cancelled']);
-                break;
-
-            case 'refund':
-                $transaction->update(['status' => 'refunded']);
                 break;
 
             default:
