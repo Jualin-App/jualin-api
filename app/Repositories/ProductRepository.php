@@ -20,6 +20,7 @@ class ProductRepository
      * - sort_by (allowed: price, name, created_at)
      * - sort_dir (asc|desc)
      * - per_page (int)
+     * - seller_id (filter by seller/owner id)
      *
      * @param  array  $filters
      * @return LengthAwarePaginator
@@ -27,6 +28,10 @@ class ProductRepository
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $q = Product::query();
+
+        if (!empty($filters['seller_id'])) {
+            $q->where('seller_id', $filters['seller_id']);
+        }
 
         if (!empty($filters['category'])) {
             $q->where('category', $filters['category']);

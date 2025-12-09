@@ -43,6 +43,10 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']);
+    
+    Route::middleware('role:seller')->group(function () {
+        Route::get('/transactions/income/statistics', [TransactionController::class, 'incomeStatistics']);
+    });
 
     Route::middleware('role:customer,admin')->group(function () {
         Route::post('/payments/create', [PaymentController::class, 'createPayment']);
