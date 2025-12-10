@@ -3,8 +3,8 @@
 namespace App\Repositories;
 
 use App\Models\Product;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProductRepository
 {
@@ -90,10 +90,8 @@ class ProductRepository
         if (!$product) {
             return null;
         }
-
         $product->fill($data);
         $product->save();
-
         return $product;
     }
 
@@ -103,7 +101,6 @@ class ProductRepository
         if (!$product) {
             return false;
         }
-
         return (bool) $product->delete();
     }
 }
