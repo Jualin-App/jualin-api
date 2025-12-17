@@ -31,7 +31,8 @@ class AuthController extends Controller
             'message' => 'User registered successfully',
             'user' => $result['user'],
             'access_token' => $result['access_token'],
-            'refresh_token' => $result['refresh_token']
+            'refresh_token' => $result['refresh_token'],
+            'role' => $result['user']->role,
         ], 201);
     }
 
@@ -47,7 +48,8 @@ class AuthController extends Controller
             'username' => $result['user']->username,
             'email' => $result['user']->email,
             'access_token' => $result['access_token'],
-            'refresh_token' => $result['refresh_token']
+            'refresh_token' => $result['refresh_token'],
+            'role' => $result['user']->role,
         ]);
     }
 

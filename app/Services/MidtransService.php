@@ -123,52 +123,26 @@ class MidtransService
     {
         $transaction = $payment->transaction;
         $oldStatus = $transaction->status;
-        $newStatus = null;
+        $newStatus = match ($transactionStatus) {
+            'capture' => $fraudStatus === 'accept'
+                ? 'paid'
+                : ($fraudStatus === 'challenge' ? 'pending' : null),
+            'settlement' => 'paid',
+            'pending' => 'pending',
+            'deny' => 'failed',
+            'expire' => 'expired',
+            default => null,
+        };
 
-        switch ($transactionStatus) {
-            case 'capture':
-                if ($fraudStatus == 'accept') {
-                    $transaction->update(['status' => 'paid']);
-                } elseif ($fraudStatus == 'challenge') {
-                    $transaction->update(['status' => 'pending']);
-                }
-                break;
-
-            case 'settlement':
-                $transaction->update(['status' => 'paid']);
-                break;
-
-            case 'pending':
-                $transaction->update(['status' => 'pending']);
-                break;
-
-            case 'deny':
-                $transaction->update(['status' => 'failed']);
-                break;
-
-            case 'expire':
-                $transaction->update(['status' => 'expired']);
-                break;
-
-            case 'cancel':
-                $transaction->update(['status' => 'cancelled']);
-                break;
-
-            case 'refund':
-                $transaction->update(['status' => 'refunded']);
-                break;
-
-            default:
-                break;
+        if (!$newStatus) {
+            return;
         }
 
-        if ($newStatus) {
-            $transaction->update(['status' => $newStatus]);
+        $transaction->update(['status' => $newStatus]);
 
-            $failedStatuses = ['failed', 'expired', 'cancelled', 'refunded'];
-            if (in_array($newStatus, $failedStatuses) && !in_array($oldStatus, $failedStatuses)) {
-                $this->restoreStock($transaction);
-            }
+        $failedStatuses = ['failed', 'expired', 'cancelled', 'refunded'];
+        if (in_array($newStatus, $failedStatuses) && !in_array($oldStatus, $failedStatuses)) {
+            $this->restoreStock($transaction);
         }
     }
 

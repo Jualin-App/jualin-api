@@ -99,7 +99,7 @@ class TransactionController extends Controller
         }
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $user = Auth::user();
 
@@ -109,7 +109,7 @@ class TransactionController extends Controller
                     ->orWhere('seller_id', $user->id);
             })
             ->latest()
-            ->paginate(10);
+            ->paginate((int) $request->get('per_page', 10));
 
         return ApiResponse::success(
             'Transactions retrieved successfully',
@@ -147,5 +147,104 @@ class TransactionController extends Controller
                 404
             );
         }
+    }
+
+    public function incomeStatistics(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $period = $request->get('period', 'Month'); // Year, Month, Week
+
+        // Get all transactions for this seller
+        $transactions = Transaction::where('seller_id', $user->id)
+            ->with('payment')
+            ->get();
+
+        // Calculate Balance (total of all transactions)
+        $balance = $transactions->sum('total_amount');
+
+        // Calculate Transferred (total of paid/completed transactions)
+        $transferred = $transactions
+            ->whereIn('status', ['paid', 'completed'])
+            ->sum('total_amount');
+
+        // Group transactions by period for chart data
+        $chartData = $this->groupTransactionsByPeriod($transactions, $period);
+
+        return ApiResponse::success(
+            'Income statistics retrieved successfully',
+            [
+                'balance' => (float) $balance,
+                'transferred' => (float) $transferred,
+                'chart_data' => $chartData,
+                'period' => $period,
+            ],
+            200
+        );
+    }
+
+    private function groupTransactionsByPeriod($transactions, $period): array
+    {
+        $grouped = [];
+        $groupedWithDate = []; // Store date for sorting
+
+        foreach ($transactions as $transaction) {
+            $date = \Carbon\Carbon::parse($transaction->created_at);
+            $key = '';
+            $sortDate = $date;
+
+            switch ($period) {
+                case 'Year':
+                    $key = $date->format('Y');
+                    $sortDate = $date->copy()->startOfYear();
+                    break;
+                case 'Month':
+                    $key = $date->format('M Y'); // e.g., "Jan 2024"
+                    $sortDate = $date->copy()->startOfMonth();
+                    break;
+                case 'Week':
+                    $weekStart = $date->copy()->startOfWeek();
+                    $weekEnd = $date->copy()->endOfWeek();
+                    $key = $weekStart->format('M d') . ' - ' . $weekEnd->format('M d, Y');
+                    $sortDate = $weekStart;
+                    break;
+                default:
+                    $key = $date->format('M Y');
+                    $sortDate = $date->copy()->startOfMonth();
+            }
+
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = 0;
+                $groupedWithDate[$key] = $sortDate;
+            }
+
+            $grouped[$key] += (float) $transaction->total_amount;
+        }
+
+        // Convert to array format for chart with sorting
+        $chartData = [];
+        foreach ($grouped as $label => $amount) {
+            $chartData[] = [
+                'label' => $label,
+                'income' => $amount,
+                'sort_date' => $groupedWithDate[$label],
+            ];
+        }
+
+        // Sort by date (ascending)
+        usort($chartData, function ($a, $b) {
+            return $a['sort_date']->compare($b['sort_date']);
+        });
+
+        // Remove sort_date before returning
+        $chartData = array_map(function ($item) {
+            unset($item['sort_date']);
+            return $item;
+        }, $chartData);
+
+        // Limit to last 6-12 periods for better visualization
+        $maxPeriods = $period === 'Year' ? 5 : ($period === 'Month' ? 12 : 8);
+        $chartData = array_slice($chartData, -$maxPeriods);
+
+        return $chartData;
     }
 }
