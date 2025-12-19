@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
 
 class ProductRepository
 {
@@ -81,6 +82,9 @@ class ProductRepository
 
     public function create(array $data): Product
     {
+        if (isset($data['image']) && $data['image'] instanceof \Illuminate\Http\UploadedFile) {
+            $data['image'] = $data['image']->store('products', 'public');
+        }
         return Product::create($data);
     }
 
@@ -90,6 +94,15 @@ class ProductRepository
         if (!$product) {
             return null;
         }
+
+        if (isset($data['image']) && $data['image'] instanceof \Illuminate\Http\UploadedFile) {
+            // Delete old image if exists
+            if ($product->image && Storage::disk('public')->exists($product->image)) {
+                Storage::disk('public')->delete($product->image);
+            }
+            $data['image'] = $data['image']->store('products', 'public');
+        }
+
         $product->fill($data);
         $product->save();
         return $product;
@@ -101,6 +114,12 @@ class ProductRepository
         if (!$product) {
             return false;
         }
+
+        // Delete associated image if exists
+        if ($product->image && Storage::disk('public')->exists($product->image)) {
+            Storage::disk('public')->delete($product->image);
+        }
+
         return (bool) $product->delete();
     }
 }

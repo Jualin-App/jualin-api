@@ -28,7 +28,13 @@ class ProductController extends Controller
 
     public function store(ProductStoreRequest $request): JsonResponse
     {
-        $product = $this->repo->create($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image');
+        }
+
+        $product = $this->repo->create($data);
         return ApiResponse::success('Product created successfully', new ProductResponse($product), 201);
     }
 
@@ -47,7 +53,14 @@ class ProductController extends Controller
         if (!$product) {
             return ApiResponse::error('Product not found', null, 404);
         }
-        $updatedProduct = $this->repo->update($id, $request->validated());
+
+        $data = $request->validated();
+
+        if ($request->hasFile('image')) {
+            $data['image'] = $request->file('image');
+        }
+
+        $updatedProduct = $this->repo->update($id, $data);
         return ApiResponse::success('Product updated successfully', new ProductResponse($updatedProduct));
     }
 

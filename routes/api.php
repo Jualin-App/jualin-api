@@ -29,24 +29,25 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::post('/users', [UserController::class, 'store']);
-        Route::put('/users/{id}/update', [UserController::class, 'update']);
+
         Route::delete('/users/{id}/delete', [UserController::class, 'destroy']);
     });
 
     Route::middleware('role:seller')->group(function () {
         Route::post('/products', [ProductController::class, 'store']);
-        Route::put('/products/{product}', [ProductController::class, 'update']);
+        Route::patch('/products/{product}', [ProductController::class, 'update']);
         Route::delete('/products/{product}', [ProductController::class, 'destroy']);
     });
 
     Route::middleware('role:customer,admin')->group(function () {
         Route::post('/transactions', [TransactionController::class, 'store']);
-        Route::get('/payments/history', [PaymentController::class, 'getPaymentsByUser']);    
+        Route::get('/payments/history', [PaymentController::class, 'getPaymentsByUser']);
     });
 
+    Route::patch('/users/{id}/update', [UserController::class, 'update']);
     Route::get('/transactions', [TransactionController::class, 'index']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']);
-    
+
     Route::middleware('role:seller')->group(function () {
         Route::get('/transactions/income/statistics', [TransactionController::class, 'incomeStatistics']);
     });

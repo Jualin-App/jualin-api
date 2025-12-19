@@ -34,12 +34,24 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request)
     {
-        return ApiResponse::success('User created', $this->service->create($request->validated()), 201);
+        $data = $request->validated();
+
+        if ($request->hasFile('profile_picture')) {
+            $data['profile_picture'] = $request->file('profile_picture');
+        }
+
+        return ApiResponse::success('User created', $this->service->create($data), 201);
     }
 
     public function update(UpdateUserRequest $request, $id)
     {
-        return ApiResponse::success('User updated', $this->service->update($id, $request->validated()));
+        $data = $request->validated();
+
+        if ($request->hasFile('profile_picture')) {
+            $data['profile_picture'] = $request->file('profile_picture');
+        }
+
+        return ApiResponse::success('User updated', $this->service->update($id, $data));
     }
 
     public function destroy($id)

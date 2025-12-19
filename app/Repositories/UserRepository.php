@@ -12,6 +12,7 @@ class UserRepository
         return User::create([
             'username' => $data['username'],
             'email' => $data['email'],
+            'profile_picture' => $data['profile_picture'] ?? null,
             'password' => bcrypt($data['password']),
             'role' => $data['role'] ?? 'customer',
             'bio' => $data['bio'] ?? null,
