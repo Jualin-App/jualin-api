@@ -26,9 +26,16 @@ class UpdateUserRequest extends FormRequest
         return [
             'username' => "sometimes|string|min:3|max:20|unique:users,username,$id",
             'email'    => "sometimes|email|unique:users,email,$id",
+            'profile_picture' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'password' => 'sometimes|string|min:8',
             'role'     => 'sometimes|in:admin,seller,customer',
-            'gender'   => 'nullable|in:male,female,other',
+            'bio'      => 'sometimes|nullable|string',
+            'gender'   => 'sometimes|nullable|in:male,female,other',
+            'birthday' => 'sometimes|nullable|date',
+            'region'   => 'sometimes|nullable|string',
+            'city'     => 'sometimes|nullable|string',
+            'followers' => 'sometimes|nullable|integer|min:0',
+            'following' => 'sometimes|nullable|integer|min:0',
         ];
     }
 }
