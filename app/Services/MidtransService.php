@@ -22,9 +22,6 @@ class MidtransService
         Config::$is3ds = config('midtrans.is_3ds');
     }
 
-    /**
-     * Create Snap payment token
-     */
     public function createSnapToken(Transaction $transaction, array $customerDetails): array
     {
         $orderId = 'ORDER-' . Str::upper(Str::random(10)) . '-' . $transaction->id;
@@ -83,9 +80,6 @@ class MidtransService
         }
     }
 
-    /**
-     * Handle Midtrans webhook/callback
-     */
     public function handleNotification(array $notificationData): Payment
     {
         try {
@@ -115,10 +109,6 @@ class MidtransService
         }
     }
 
-    /**
-     * Update status transaction berdasarkan payment status
-     * FUNCTION BARU - LEBIH ROBUST
-     */
     private function updateTransactionStatus(Payment $payment, string $transactionStatus, ?string $fraudStatus): void
     {
         $transaction = $payment->transaction;
@@ -168,10 +158,6 @@ class MidtransService
         }
     }
 
-    /**
-     * Get bank or channel dari notification
-     * FUNCTION BARU - HELPER
-     */
     private function getBankOrChannel($notification): ?string
     {
         if (isset($notification->va_numbers) && !empty($notification->va_numbers)) {
@@ -191,9 +177,6 @@ class MidtransService
         return $notification->payment_type ?? null;
     }
 
-    /**
-     * Get transaction status from Midtrans
-     */
     public function getTransactionStatus(string $orderId): array
     {
         try {
@@ -203,4 +186,52 @@ class MidtransService
             throw new \Exception('Failed to check transaction status: ' . $e->getMessage());
         }
     }
+
+    public function reissueSnapToken(Payment $payment, array $customerDetails): array
+{
+    $transaction = $payment->transaction;
+    $orderId = 'ORDER-' . Str::upper(Str::random(10)) . '-' . $transaction->id;
+
+    $items = [];
+    foreach ($transaction->items as $item) {
+        $items[] = [
+            'id'       => $item->product_id,
+            'price'    => $item->price_at_purchase,
+            'quantity' => $item->quantity,
+            'name'     => $item->product->name,
+        ];
+    }
+
+    $params = [
+        'transaction_details' => [
+            'order_id'     => $orderId,
+            'gross_amount' => $transaction->total_amount,
+        ],
+        'item_details'      => $items,
+        'customer_details'  => [
+            'first_name' => $customerDetails['first_name'] ?? $transaction->customer->name,
+            'last_name'  => $customerDetails['last_name'] ?? '',
+            'email'      => $customerDetails['email'] ?? $transaction->customer->email,
+            'phone'      => $customerDetails['phone'] ?? '',
+        ],
+    ];
+
+    $snapResponse = Snap::createTransaction($params);
+
+    $payment->update([
+        'order_id'                => $orderId,
+        'snap_token'              => $snapResponse->token,
+        'snap_url'                => $snapResponse->redirect_url,
+        'midtrans_transaction_id' => null,
+        'transaction_status'      => 'pending',
+        'transaction_time'        => now(),
+    ]);
+
+    return [
+        'snap_token' => $snapResponse->token,
+        'snap_url'   => $snapResponse->redirect_url,
+        'order_id'   => $orderId,
+        'payment_id' => $payment->id,
+    ];
+}
 }
