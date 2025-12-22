@@ -21,9 +21,15 @@ class ProductController extends Controller
     public function index(ProductFilterRequest $request)
     {
         $filters = $request->validated();
+        
         $paginated = $this->repo->getAll($filters);
 
-        return ApiResponse::success('Products retrieved', $paginated);
+        return response()->json([
+            'products' => $paginated->items(),
+            'totalProducts' => $paginated->total(),
+            'totalPages' => $paginated->lastPage() ?: 1, // Minimal bernilai 1
+            'currentPage' => $paginated->currentPage()
+        ]);
     }
 
     public function store(ProductStoreRequest $request): JsonResponse
