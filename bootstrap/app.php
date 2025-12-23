@@ -22,15 +22,15 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
 
-        $exceptions->render(function (AuthenticationException $e, $request) {
-            if ($request->expectsJson() || $request->is('api/*')) {
-                return ApiResponse::error(
-                    'Unauthenticated.',
-                    null,
-                    401
-                );
-            }
-        });
+        // $exceptions->render(function (AuthenticationException $e, $request) {
+        //     if ($request->expectsJson() || $request->is('api/*')) {
+        //         return ApiResponse::error(
+        //             'Unauthenticated.',
+        //             null,
+        //             401
+        //         );
+        //     }
+        // });
 
         // Handle Validation Exception (422)
         $exceptions->render(function (\Illuminate\Validation\ValidationException $e, $request) {
