@@ -6,6 +6,7 @@ return [
     'allowed_origins' => [
         'http://localhost:3000',
         'https://www.jualin-tel.biz.id',
+        'https://jualin-tel.biz.id',
     ],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
