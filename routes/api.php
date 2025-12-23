@@ -36,6 +36,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     });
 
     Route::middleware('role:seller')->group(function () {
+        Route::get('/seller/products', [ProductController::class, 'indexMe']);
         Route::post('/products', [ProductController::class, 'store']);
         Route::patch('/products/{product}', [ProductController::class, 'update']);
         Route::delete('/products/{product}', [ProductController::class, 'destroy']);
