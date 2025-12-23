@@ -83,21 +83,20 @@ class MidtransService
     public function handleNotification(array $notificationData): Payment
     {
         try {
-            $notification = new Notification();
-
-            $orderId = $notification->order_id;
-            $transactionStatus = $notification->transaction_status;
-            $fraudStatus = $notification->fraud_status ?? null;
+            // Use passed data directly
+            $orderId = $notificationData['order_id'];
+            $transactionStatus = $notificationData['transaction_status'];
+            $fraudStatus = $notificationData['fraud_status'] ?? null;
 
             $payment = Payment::where('order_id', $orderId)->firstOrFail();
 
             $payment->update([
-                'midtrans_transaction_id' => $notification->transaction_id,
-                'payment_type' => $notification->payment_type,
-                'bank_or_channel' => $this->getBankOrChannel($notification),
+                'midtrans_transaction_id' => $notificationData['transaction_id'],
+                'payment_type' => $notificationData['payment_type'],
+                'bank_or_channel' => $this->getBankOrChannel($notificationData),
                 'transaction_status' => $transactionStatus,
-                'transaction_time' => isset($notification->transaction_time)
-                    ? date('Y-m-d H:i:s', strtotime($notification->transaction_time))
+                'transaction_time' => isset($notificationData['transaction_time'])
+                    ? date('Y-m-d H:i:s', strtotime($notificationData['transaction_time']))
                     : now(),
             ]);
 
@@ -115,8 +114,8 @@ class MidtransService
         $oldStatus = $transaction->status;
         $newStatus = match ($transactionStatus) {
             'capture' => $fraudStatus === 'accept'
-                ? 'paid'
-                : ($fraudStatus === 'challenge' ? 'pending' : null),
+            ? 'paid'
+            : ($fraudStatus === 'challenge' ? 'pending' : null),
             'settlement' => 'paid',
             'pending' => 'pending',
             'deny' => 'failed',
@@ -158,23 +157,25 @@ class MidtransService
         }
     }
 
-    private function getBankOrChannel($notification): ?string
+    private function getBankOrChannel(array $notification): ?string
     {
-        if (isset($notification->va_numbers) && !empty($notification->va_numbers)) {
-            return $notification->va_numbers[0]->bank;
+        if (isset($notification['va_numbers']) && !empty($notification['va_numbers'])) {
+            // Handle array structure: va_numbers is typically list of objects or arrays
+            $va = $notification['va_numbers'][0];
+            return is_array($va) ? $va['bank'] : $va->bank;
         }
 
-        if (isset($notification->payment_type)) {
-            if (in_array($notification->payment_type, ['gopay', 'shopeepay', 'qris'])) {
-                return $notification->payment_type;
+        if (isset($notification['payment_type'])) {
+            if (in_array($notification['payment_type'], ['gopay', 'shopeepay', 'qris'])) {
+                return $notification['payment_type'];
             }
         }
 
-        if (isset($notification->bank)) {
-            return $notification->bank;
+        if (isset($notification['bank'])) {
+            return $notification['bank'];
         }
 
-        return $notification->payment_type ?? null;
+        return $notification['payment_type'] ?? null;
     }
 
     public function getTransactionStatus(string $orderId): array
@@ -188,50 +189,50 @@ class MidtransService
     }
 
     public function reissueSnapToken(Payment $payment, array $customerDetails): array
-{
-    $transaction = $payment->transaction;
-    $orderId = 'ORDER-' . Str::upper(Str::random(10)) . '-' . $transaction->id;
+    {
+        $transaction = $payment->transaction;
+        $orderId = 'ORDER-' . Str::upper(Str::random(10)) . '-' . $transaction->id;
 
-    $items = [];
-    foreach ($transaction->items as $item) {
-        $items[] = [
-            'id'       => $item->product_id,
-            'price'    => $item->price_at_purchase,
-            'quantity' => $item->quantity,
-            'name'     => $item->product->name,
+        $items = [];
+        foreach ($transaction->items as $item) {
+            $items[] = [
+                'id' => $item->product_id,
+                'price' => $item->price_at_purchase,
+                'quantity' => $item->quantity,
+                'name' => $item->product->name,
+            ];
+        }
+
+        $params = [
+            'transaction_details' => [
+                'order_id' => $orderId,
+                'gross_amount' => $transaction->total_amount,
+            ],
+            'item_details' => $items,
+            'customer_details' => [
+                'first_name' => $customerDetails['first_name'] ?? $transaction->customer->name,
+                'last_name' => $customerDetails['last_name'] ?? '',
+                'email' => $customerDetails['email'] ?? $transaction->customer->email,
+                'phone' => $customerDetails['phone'] ?? '',
+            ],
+        ];
+
+        $snapResponse = Snap::createTransaction($params);
+
+        $payment->update([
+            'order_id' => $orderId,
+            'snap_token' => $snapResponse->token,
+            'snap_url' => $snapResponse->redirect_url,
+            'midtrans_transaction_id' => null,
+            'transaction_status' => 'pending',
+            'transaction_time' => now(),
+        ]);
+
+        return [
+            'snap_token' => $snapResponse->token,
+            'snap_url' => $snapResponse->redirect_url,
+            'order_id' => $orderId,
+            'payment_id' => $payment->id,
         ];
     }
-
-    $params = [
-        'transaction_details' => [
-            'order_id'     => $orderId,
-            'gross_amount' => $transaction->total_amount,
-        ],
-        'item_details'      => $items,
-        'customer_details'  => [
-            'first_name' => $customerDetails['first_name'] ?? $transaction->customer->name,
-            'last_name'  => $customerDetails['last_name'] ?? '',
-            'email'      => $customerDetails['email'] ?? $transaction->customer->email,
-            'phone'      => $customerDetails['phone'] ?? '',
-        ],
-    ];
-
-    $snapResponse = Snap::createTransaction($params);
-
-    $payment->update([
-        'order_id'                => $orderId,
-        'snap_token'              => $snapResponse->token,
-        'snap_url'                => $snapResponse->redirect_url,
-        'midtrans_transaction_id' => null,
-        'transaction_status'      => 'pending',
-        'transaction_time'        => now(),
-    ]);
-
-    return [
-        'snap_token' => $snapResponse->token,
-        'snap_url'   => $snapResponse->redirect_url,
-        'order_id'   => $orderId,
-        'payment_id' => $payment->id,
-    ];
-}
 }
