@@ -34,8 +34,9 @@ class ProductRepository
             $q->where('seller_id', $filters['seller_id']);
         }
 
+        // Case-insensitive category match
         if (!empty($filters['category'])) {
-            $q->where('category', $filters['category']);
+            $q->whereRaw('LOWER(category) = ?', [mb_strtolower($filters['category'])]);
         }
 
         if (!empty($filters['location'])) {
@@ -45,8 +46,14 @@ class ProductRepository
             });
         }
 
+        // Case-insensitive search on name OR description
         if (!empty($filters['name'])) {
-            $q->where('name', 'like', '%' . $filters['name'] . '%');
+            $needle = $filters['name'];
+            $safe = '%' . mb_strtolower($needle) . '%';
+            $q->where(function ($sq) use ($safe) {
+                $sq->whereRaw('LOWER(name) LIKE ?', [$safe])
+                   ->orWhereRaw('LOWER(description) LIKE ?', [$safe]);
+            });
         }
 
         if (isset($filters['price_min']) && $filters['price_min'] !== '') {
