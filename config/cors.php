@@ -2,7 +2,7 @@
 
 return [
     'paths' => ['api/*', 'v1/*', 'sanctum/csrf-cookie'],
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     'allowed_origins' => [
         'http://localhost:3000',
         'https://www.jualin-tel.biz.id',
