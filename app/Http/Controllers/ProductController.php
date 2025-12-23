@@ -8,6 +8,7 @@ use App\Repositories\ProductRepository;
 use App\Http\Responses\ApiResponse;
 use App\Http\Responses\ProductResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
 class ProductController extends Controller
 {
@@ -32,9 +33,25 @@ class ProductController extends Controller
         ]);
     }
 
+    public function indexMe(ProductFilterRequest $request)
+    {
+        $filters = $request->validated();
+        $filters['seller_id'] = Auth::id();
+        
+        $paginated = $this->repo->getAll($filters);
+
+        return response()->json([
+            'products' => $paginated->items(),
+            'totalProducts' => $paginated->total(),
+            'totalPages' => $paginated->lastPage() ?: 1,
+            'currentPage' => $paginated->currentPage()
+        ]);
+    }
+
     public function store(ProductStoreRequest $request): JsonResponse
     {
         $data = $request->validated();
+        $data['seller_id'] = Auth::id();
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image');
@@ -60,6 +77,10 @@ class ProductController extends Controller
             return ApiResponse::error('Product not found', null, 404);
         }
 
+        if ($product->seller_id !== Auth::id()) {
+            return ApiResponse::error('Forbidden', null, 403);
+        }
+
         $data = $request->validated();
 
         if ($request->hasFile('image')) {
@@ -75,6 +96,10 @@ class ProductController extends Controller
         $product = $this->repo->find($id);
         if (!$product) {
             return ApiResponse::error('Product not found', null, 404);
+        }
+
+        if ($product->seller_id !== Auth::id()) {
+            return ApiResponse::error('Forbidden', null, 403);
         }
         $this->repo->delete($id);
         return ApiResponse::success('Product deleted successfully', null);

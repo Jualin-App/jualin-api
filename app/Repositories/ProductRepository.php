@@ -28,7 +28,7 @@ class ProductRepository
      */
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $q = Product::query();
+        $q = Product::query()->with('seller');
 
         if (!empty($filters['seller_id'])) {
             $q->where('seller_id', $filters['seller_id']);
@@ -77,7 +77,7 @@ class ProductRepository
 
     public function find(int $id): ?Product
     {
-        return Product::find($id);
+        return Product::with('seller')->find($id);
     }
 
     public function create(array $data): Product

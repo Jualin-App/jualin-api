@@ -21,6 +21,12 @@ class ProductResponse extends JsonResource
             'status' => $this->status,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'seller' => [
+                'id' => $this->seller->id ?? null,
+                'username' => $this->seller->username ?? null,
+                'profile_picture' => $this->seller->profile_picture ?? null,
+                'city' => $this->seller->city ?? null,
+            ],
         ];
     }
 }

@@ -14,7 +14,6 @@ class ProductStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'seller_id' => ['required','integer','exists:users,id'],
             'name' => ['required','string','max:255'],
             'description' => ['nullable','string'],
             'price' => ['required','numeric','min:0'],
@@ -23,6 +22,13 @@ class ProductStoreRequest extends FormRequest
             'category' => ['nullable','string','max:100'],
             'condition' => ['nullable','in:new,used,refurbished'],
             'status' => ['nullable','in:active,inactive,archived'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'image.max' => 'Ukuran gambar terlalu besar. Maksimal 2MB. Silakan gunakan gambar dengan ukuran lebih kecil atau kompres terlebih dahulu.',
         ];
     }
 }
