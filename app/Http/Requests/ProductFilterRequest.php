@@ -30,6 +30,7 @@ class ProductFilterRequest extends FormRequest
             'sort_by' => ['sometimes', 'string', 'in:price,name,created_at'],
             'sort_dir' => ['sometimes', 'string', 'in:asc,desc'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:200'],
+            'min_stock' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 
