@@ -132,7 +132,6 @@ class PaymentController extends Controller
         $user = Auth::user();
 
         $payments = Payment::with(['transaction.items.product', 'transaction.seller'])
-<<<<<<< HEAD
             ->whereHas('transaction', function ($query) use ($user) {
                 $query->where('customer_id', $user->id);
             })
@@ -155,33 +154,6 @@ class PaymentController extends Controller
                     'first_item_name' => $product ? $product->name : 'Unknown Product',
                     'first_item_category' => $product ? $product->category : null,
                     'seller_name' => $seller ? ($seller->shop_name ?? $seller->username) : 'Unknown Seller',
-=======
-            ->whereHas('transaction', fn($q) => $q->where('customer_id', $user->id))
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(function ($payment) {
-                $firstItem = optional($payment->transaction->items->first());
-                $product   = optional($firstItem->product);
-                $seller    = optional($payment->transaction->seller)->name;
-
-                if ($payment->transaction_status !== 'pending') {
-                    $payment->snap_token = null;
-                    $payment->snap_url   = null;
-                }
-
-                return [
-                    'payment_id'           => $payment->id,
-                    'order_id'             => $payment->order_id,
-                    'snap_token'           => $payment->snap_token,
-                    'snap_url'             => $payment->snap_url,
-                    'transaction_status'   => $payment->transaction_status,
-                    'gross_amount'         => $payment->gross_amount,
-                    'transaction_id'       => $payment->transaction_id,
-                    'transaction_time'     => $payment->transaction_time ?? $payment->created_at,
-                    'seller_name'          => $seller,
-                    'first_item_name'      => $product->name ?? null,
-                    'first_item_category'  => $product->category ?? null,
->>>>>>> 899ffb538069e0cbbed2ae3588b48bbbf981ce8f
                 ];
             });
 
