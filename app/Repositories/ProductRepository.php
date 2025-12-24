@@ -64,6 +64,10 @@ class ProductRepository
             $q->where('price', '<=', $filters['price_max']);
         }
 
+        if (isset($filters['min_stock'])) {
+            $q->where('stock_quantity', '>=', $filters['min_stock']);
+        }
+
         $allowedSort = ['price', 'name', 'created_at'];
         if (!empty($filters['sort_by']) && in_array($filters['sort_by'], $allowedSort, true)) {
             $direction = 'asc';
