@@ -132,6 +132,30 @@ class PaymentController extends Controller
         $user = Auth::user();
 
         $payments = Payment::with(['transaction.items.product', 'transaction.seller'])
+<<<<<<< HEAD
+            ->whereHas('transaction', function ($query) use ($user) {
+                $query->where('customer_id', $user->id);
+            })
+            ->latest() // Order by latest
+            ->get()
+            ->map(function ($payment) {
+                $transaction = $payment->transaction;
+                $firstItem = $transaction->items->first();
+                $product = $firstItem ? $firstItem->product : null;
+                $seller = $transaction->seller;
+
+                return [
+                    'payment_id' => $payment->id,
+                    'order_id' => $payment->order_id,
+                    'snap_token' => $payment->transaction_status === 'pending' ? $payment->snap_token : null,
+                    'snap_url' => $payment->transaction_status === 'pending' ? $payment->snap_url : null,
+                    'transaction_status' => $payment->transaction_status,
+                    'gross_amount' => $payment->gross_amount,
+                    'transaction_time' => $payment->created_at, // Use payment creation time
+                    'first_item_name' => $product ? $product->name : 'Unknown Product',
+                    'first_item_category' => $product ? $product->category : null,
+                    'seller_name' => $seller ? ($seller->shop_name ?? $seller->username) : 'Unknown Seller',
+=======
             ->whereHas('transaction', fn($q) => $q->where('customer_id', $user->id))
             ->orderByDesc('created_at')
             ->get()
@@ -157,6 +181,7 @@ class PaymentController extends Controller
                     'seller_name'          => $seller,
                     'first_item_name'      => $product->name ?? null,
                     'first_item_category'  => $product->category ?? null,
+>>>>>>> 899ffb538069e0cbbed2ae3588b48bbbf981ce8f
                 ];
             });
 
