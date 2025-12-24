@@ -132,6 +132,7 @@ class PaymentController extends Controller
         $user = Auth::user();
 
         $payments = Payment::with(['transaction.items.product', 'transaction.seller'])
+<<<<<<< HEAD
             ->whereHas('transaction', function ($query) use ($user) {
                 $query->where('customer_id', $user->id);
             })
@@ -154,6 +155,33 @@ class PaymentController extends Controller
                     'first_item_name' => $product ? $product->name : 'Unknown Product',
                     'first_item_category' => $product ? $product->category : null,
                     'seller_name' => $seller ? ($seller->shop_name ?? $seller->username) : 'Unknown Seller',
+=======
+            ->whereHas('transaction', fn($q) => $q->where('customer_id', $user->id))
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($payment) {
+                $firstItem = optional($payment->transaction->items->first());
+                $product   = optional($firstItem->product);
+                $seller    = optional($payment->transaction->seller)->name;
+
+                if ($payment->transaction_status !== 'pending') {
+                    $payment->snap_token = null;
+                    $payment->snap_url   = null;
+                }
+
+                return [
+                    'payment_id'           => $payment->id,
+                    'order_id'             => $payment->order_id,
+                    'snap_token'           => $payment->snap_token,
+                    'snap_url'             => $payment->snap_url,
+                    'transaction_status'   => $payment->transaction_status,
+                    'gross_amount'         => $payment->gross_amount,
+                    'transaction_id'       => $payment->transaction_id,
+                    'transaction_time'     => $payment->transaction_time ?? $payment->created_at,
+                    'seller_name'          => $seller,
+                    'first_item_name'      => $product->name ?? null,
+                    'first_item_category'  => $product->category ?? null,
+>>>>>>> 899ffb538069e0cbbed2ae3588b48bbbf981ce8f
                 ];
             });
 
@@ -161,10 +189,43 @@ class PaymentController extends Controller
             return ApiResponse::error('No payments found', [], 404);
         }
 
-        return ApiResponse::success(
-            'Payments retrieved successfully',
-            $payments,
-            200
-        );
+        return ApiResponse::success('Payments retrieved successfully', $payments, 200);
+    }
+
+    public function reissuePaymentToken(Request $request, int $paymentId): JsonResponse
+    {
+        $user = Auth::user();
+        if (!in_array($user->role, ['customer','admin'])) {
+            return ApiResponse::error('Only customers and admins can reissue payments', null, 403);
+        }
+
+        try {
+            $payment = Payment::with('transaction.customer')->findOrFail($paymentId);
+
+            if ($payment->transaction->customer_id !== $user->id && $user->role !== 'admin') {
+                return ApiResponse::error('Unauthorized access to payment', null, 403);
+            }
+
+            if (strtolower($payment->transaction_status) !== 'pending') {
+                return ApiResponse::error('Only pending payments can be reissued', null, 422);
+            }
+
+            $customerDetails = $request->customer_details ?? [];
+            $customerDetails['email'] ??= $payment->transaction->customer->email;
+            $customerDetails['first_name'] ??= $payment->transaction->customer->username ?? $payment->transaction->customer->name;
+
+            $result = $this->midtransService->reissueSnapToken($payment, $customerDetails);
+
+            return ApiResponse::success('Payment token reissued', [
+                'snap_token' => $result['snap_token'],
+                'snap_url'   => $result['snap_url'],
+                'order_id'   => $result['order_id'],
+                'payment_id' => $payment->id,
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return ApiResponse::error('Payment not found', null, 404);
+        } catch (\Exception $e) {
+            return ApiResponse::error('Failed to reissue token', ['error' => $e->getMessage()], 500);
+        }
     }
 }
