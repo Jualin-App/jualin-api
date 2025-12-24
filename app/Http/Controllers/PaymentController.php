@@ -131,23 +131,30 @@ class PaymentController extends Controller
     {
         $user = Auth::user();
 
-        $payments = Payment::whereHas('transaction', function ($query) use ($user) {
+        $payments = Payment::with(['transaction.items.product', 'transaction.seller'])
+            ->whereHas('transaction', function ($query) use ($user) {
                 $query->where('customer_id', $user->id);
             })
-            ->get([
-                'id as payment_id',
-                'order_id',
-                'snap_token',
-                'snap_url',
-                'transaction_status',
-                'gross_amount'
-            ])
+            ->latest() // Order by latest
+            ->get()
             ->map(function ($payment) {
-                if ($payment->transaction_status !== 'pending') {
-                    $payment->snap_token = null;
-                    $payment->snap_url = null;
-                }
-                return $payment;
+                $transaction = $payment->transaction;
+                $firstItem = $transaction->items->first();
+                $product = $firstItem ? $firstItem->product : null;
+                $seller = $transaction->seller;
+
+                return [
+                    'payment_id' => $payment->id,
+                    'order_id' => $payment->order_id,
+                    'snap_token' => $payment->transaction_status === 'pending' ? $payment->snap_token : null,
+                    'snap_url' => $payment->transaction_status === 'pending' ? $payment->snap_url : null,
+                    'transaction_status' => $payment->transaction_status,
+                    'gross_amount' => $payment->gross_amount,
+                    'transaction_time' => $payment->created_at, // Use payment creation time
+                    'first_item_name' => $product ? $product->name : 'Unknown Product',
+                    'first_item_category' => $product ? $product->category : null,
+                    'seller_name' => $seller ? ($seller->shop_name ?? $seller->username) : 'Unknown Seller',
+                ];
             });
 
         if ($payments->isEmpty()) {
