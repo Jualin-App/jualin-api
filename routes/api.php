@@ -36,11 +36,11 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
         Route::delete('/users/{id}/delete', [UserController::class, 'destroy']);
     });
 
-    Route::middleware('role:seller')->group(function () {
+    Route::middleware('role:seller,admin')->group(function () {
         Route::get('/seller/products', [ProductController::class, 'indexMe']);
         Route::post('/products', [ProductController::class, 'store']);
         Route::patch('/products/{product}', [ProductController::class, 'update']);
-        Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+        Route::delete('/products/{product}/delete', [ProductController::class, 'destroy']);
     });
 
     Route::middleware('role:customer,admin')->group(function () {
@@ -63,7 +63,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::middleware('role:customer,admin,seller')->group(function () {
         Route::get('/payments/status/{orderId}', [PaymentController::class, 'checkStatus']);
     });
-    
+
 });
 
 Route::fallback(function (Request $request) {
