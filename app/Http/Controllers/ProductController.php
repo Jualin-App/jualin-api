@@ -22,7 +22,7 @@ class ProductController extends Controller
     public function index(ProductFilterRequest $request)
     {
         $filters = $request->validated();
-        
+
         $paginated = $this->repo->getAll($filters);
 
         return response()->json([
@@ -36,8 +36,12 @@ class ProductController extends Controller
     public function indexMe(ProductFilterRequest $request)
     {
         $filters = $request->validated();
-        $filters['seller_id'] = Auth::id();
-        
+
+        // Admin bisa melihat semua produk, seller hanya miliknya sendiri
+        if (Auth::user()->role !== 'admin') {
+            $filters['seller_id'] = Auth::id();
+        }
+
         $paginated = $this->repo->getAll($filters);
 
         return response()->json([
@@ -77,7 +81,7 @@ class ProductController extends Controller
             return ApiResponse::error('Product not found', null, 404);
         }
 
-        if ($product->seller_id !== Auth::id()) {
+        if ($product->seller_id !== Auth::id() && Auth::user()->role !== 'admin') {
             return ApiResponse::error('Forbidden', null, 403);
         }
 
@@ -98,7 +102,7 @@ class ProductController extends Controller
             return ApiResponse::error('Product not found', null, 404);
         }
 
-        if ($product->seller_id !== Auth::id()) {
+        if ($product->seller_id !== Auth::id() && Auth::user()->role !== 'admin') {
             return ApiResponse::error('Forbidden', null, 403);
         }
         $this->repo->delete($id);
