@@ -6,6 +6,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\ReportController;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Http\Request;
 
@@ -19,6 +20,7 @@ Route::prefix('v1')->group(function () {
     Route::get('products/{id}', [ProductController::class, 'show']);
     Route::get('/users/{id}', [UserController::class, 'show']);
     Route::post('/payments/notification', [PaymentController::class, 'handleNotification']);
+    Route::post('/reports', [ReportController::class, 'store']);
 
     Route::middleware('auth:api')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -31,6 +33,8 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
+        Route::get('/reports', [ReportController::class, 'index']);
+        Route::patch('/reports/{id}/status', [ReportController::class, 'updateStatus']);
         Route::post('/users', [UserController::class, 'store']);
 
         Route::delete('/users/{id}/delete', [UserController::class, 'destroy']);
