@@ -8,5 +8,5 @@ Route::get('/', function () {
 
 Route::get('/password/reset/{token}', function ($token) {
     $email = request('email');
-    return redirect("http://localhost:3000/auth/reset-password?token=$token&email=$email");
+    return redirect("https://www.jualin-tel.biz.id/auth/reset-password?token=$token&email=$email");
 })->name('password.reset');
