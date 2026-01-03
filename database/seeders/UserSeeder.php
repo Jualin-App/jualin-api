@@ -33,7 +33,7 @@ class UserSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'username' => 'seller_alpha',
+                'username' => 'seller_adam',
                 'email' => 'seller1@example.com',
                 'password' => Hash::make('password123'),
                 'role' => 'seller',
@@ -49,7 +49,7 @@ class UserSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'username' => 'seller_bravo',
+                'username' => 'seller_calwa',
                 'email' => 'seller2@example.com',
                 'password' => Hash::make('password123'),
                 'role' => 'seller',
@@ -65,7 +65,7 @@ class UserSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'username' => 'customer_neo',
+                'username' => 'customer_rakha',
                 'email' => 'customer1@example.com',
                 'password' => Hash::make('password123'),
                 'role' => 'customer',
@@ -81,7 +81,7 @@ class UserSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'username' => 'customer_luna',
+                'username' => 'customer_rizki',
                 'email' => 'customer2@example.com',
                 'password' => Hash::make('password123'),
                 'role' => 'customer',
