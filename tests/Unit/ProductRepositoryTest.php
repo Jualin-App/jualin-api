@@ -70,8 +70,8 @@ class ProductRepositoryTest extends TestCase
             'image' => UploadedFile::fake()->image('p.jpg'),
         ]);
 
-        $this->assertNotNull($product->image);
-        $this->assertTrue(Storage::disk('public')->exists($product->image));
+        $this->assertNotNull($product->getRawOriginal('image'));
+        $this->assertTrue(Storage::disk('public')->exists($product->getRawOriginal('image')));
     }
 
     public function testUpdateReplacesImageAndDeletesOld()
@@ -96,7 +96,7 @@ class ProductRepositoryTest extends TestCase
 
         $this->assertSame('BB', $updated->name);
         $this->assertFalse(Storage::disk('public')->exists('products/old.jpg'));
-        $this->assertTrue(Storage::disk('public')->exists($updated->image));
+        $this->assertTrue(Storage::disk('public')->exists($updated->getRawOriginal('image')));
     }
 
     public function testDeleteRemovesImageAndReturnsTrue()
