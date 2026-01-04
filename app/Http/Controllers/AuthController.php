@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Auth\Events\PasswordReset;
+use Kreait\Firebase\Factory;
 
 class AuthController extends Controller
 {
@@ -44,12 +45,31 @@ class AuthController extends Controller
             return ApiResponse::error('Invalid credentials', null, 401);
         }
 
+        // Generate Firebase Custom Token
+        $firebaseToken = null;
+        try {
+            // Assumes 'firebase_credentials.json' is in storage/app/
+            $serviceAccountPath = storage_path('app/firebase-credentials.json');
+
+            if (file_exists($serviceAccountPath)) {
+                $factory = (new \Kreait\Firebase\Factory)->withServiceAccount($serviceAccountPath);
+                $auth = $factory->createAuth();
+                $firebaseToken = $auth->createCustomToken((string) $result['user']->id)->toString();
+            } else {
+                // Log warning if file missing, but don't crash login
+                \Illuminate\Support\Facades\Log::warning("Firebase credentials not found at: " . $serviceAccountPath);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Firebase Token Generation Error: " . $e->getMessage());
+        }
+
         return ApiResponse::success('Login success', [
             'username' => $result['user']->username,
             'email' => $result['user']->email,
             'access_token' => $result['access_token'],
             'refresh_token' => $result['refresh_token'],
             'role' => $result['user']->role,
+            'firebase_token' => $firebaseToken, // <--- Sent to frontend
         ]);
     }
 
