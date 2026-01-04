@@ -32,4 +32,17 @@ class Product extends Model
     {
         return $this->belongsTo(User::class, 'seller_id');
     }
+
+    public function getImageAttribute($value)
+    {
+        if (!$value) {
+            return 'https://via.placeholder.com/400x400?text=No+Image';
+        }
+
+        if (filter_var($value, FILTER_VALIDATE_URL)) {
+            return $value;
+        }
+
+        return asset('storage/' . $value);
+    }
 }
