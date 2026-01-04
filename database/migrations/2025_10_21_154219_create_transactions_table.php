@@ -6,26 +6,26 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('transactions', function (Blueprint $table) {
-            $table->id()->primary();
-            $table->id('customer_id');
-            $table->id('seller_id');
+            $table->id();
+            $table->foreignId('customer_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('seller_id')->constrained('users')->cascadeOnDelete();
             $table->decimal('total_amount', 15, 2);
-            $table->enum('status', ['pending', 'paid', 'cancelled', 'completed'])->default('pending');
+            $table->enum('status', [
+                'pending',
+                'paid',
+                'cancelled',
+                'completed',
+                'failed',
+                'expired',
+                'refunded',
+            ])->default('pending');
             $table->timestamps();
-            $table->foreign('customer_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('seller_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('transactions');

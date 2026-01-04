@@ -6,24 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('chat_room_member', function (Blueprint $table) {
-            $table->id()->primary();
-            $table->id('chat_room_id');
-            $table->id('user_id');
+            $table->id(); // single primary key
+
+            // proper foreign keys
+            $table->foreignId('chat_room_id')->constrained('chat_rooms')->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+
             $table->timestamps();
-            $table->foreign('chat_room_id')->references('id')->on('chat_rooms')->onDelete('cascade');
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+
+            // optional: prevent duplicates of same member in a room
+            $table->unique(['chat_room_id', 'user_id']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('chat_room_member');
