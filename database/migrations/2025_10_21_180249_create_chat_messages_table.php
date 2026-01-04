@@ -6,27 +6,26 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('chat_messages', function (Blueprint $table) {
-            $table->id()->primary();
-            $table->id('chat_room_id');
-            $table->id('sender_id');
+            $table->id(); // single primary key
+
+            // proper foreign keys
+            $table->foreignId('chat_room_id')->constrained('chat_rooms')->cascadeOnDelete();
+            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
+
             $table->text('message');
             $table->timestamp('sent_at')->nullable();
             $table->boolean('is_read')->default(false);
+
             $table->timestamps();
-            $table->foreign('chat_room_id')->references('id')->on('chat_rooms')->onDelete('cascade');
-            $table->foreign('sender_id')->references('id')->on('users')->onDelete('cascade');
+
+            // helpful index for room queries
+            $table->index(['chat_room_id', 'sent_at']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('chat_messages');

@@ -6,25 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('forum_comments', function (Blueprint $table) {
-            $table->id()->primary();
-            $table->id('thread_id');
-            $table->id('commented_by_id');
+            $table->id(); // single primary key
+
+            // proper foreign keys
+            $table->foreignId('thread_id')->constrained('forum_threads')->cascadeOnDelete();
+            $table->foreignId('commented_by_id')->constrained('users')->cascadeOnDelete();
+
             $table->text('comment');
+
             $table->timestamps();
-            $table->foreign('thread_id')->references('id')->on('forum_threads')->onDelete('cascade');
-            $table->foreign('commented_by_id')->references('id')->on('users')->onDelete('cascade');
+
+            // helpful index for thread queries
+            $table->index(['thread_id', 'created_at']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('forum_comments');

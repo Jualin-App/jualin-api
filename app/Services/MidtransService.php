@@ -80,10 +80,22 @@ class MidtransService
         }
     }
 
+    private function isValidSignature(array $data): bool
+    {
+        if (!isset($data['order_id'], $data['status_code'], $data['gross_amount'], $data['signature_key'])) {
+            return false;
+        }
+        $expected = hash('sha512', $data['order_id'] . $data['status_code'] . $data['gross_amount'] . Config::$serverKey);
+        return hash_equals($expected, $data['signature_key']);
+    }
+
     public function handleNotification(array $notificationData): Payment
     {
         try {
-            // Use passed data directly
+            if (!$this->isValidSignature($notificationData)) {
+                throw new \Exception('Invalid signature');
+            }
+
             $orderId = $notificationData['order_id'];
             $transactionStatus = $notificationData['transaction_status'];
             $fraudStatus = $notificationData['fraud_status'] ?? null;
@@ -91,8 +103,8 @@ class MidtransService
             $payment = Payment::where('order_id', $orderId)->firstOrFail();
 
             $payment->update([
-                'midtrans_transaction_id' => $notificationData['transaction_id'],
-                'payment_type' => $notificationData['payment_type'],
+                'midtrans_transaction_id' => $notificationData['transaction_id'] ?? $payment->midtrans_transaction_id,
+                'payment_type' => $notificationData['payment_type'] ?? $payment->payment_type,
                 'bank_or_channel' => $this->getBankOrChannel($notificationData),
                 'transaction_status' => $transactionStatus,
                 'transaction_time' => isset($notificationData['transaction_time'])

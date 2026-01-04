@@ -85,26 +85,13 @@ class PaymentController extends Controller
     {
         try {
             $notification = $request->all();
-
             $payment = $this->midtransService->handleNotification($notification);
 
-            return ApiResponse::success(
-                'Notification processed',
-                $payment,
-                200
-            );
+            return ApiResponse::success('Notification processed', $payment, 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return ApiResponse::error(
-                'Payment not found',
-                null,
-                404
-            );
+            return ApiResponse::success('Notification received (payment not found)', [], 200);
         } catch (\Exception $e) {
-            return ApiResponse::error(
-                'Failed to process notification',
-                ['error' => $e->getMessage()],
-                500
-            );
+            return ApiResponse::success('Notification received (ignored)', [], 200);
         }
     }
 

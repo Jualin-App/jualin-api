@@ -3,29 +3,11 @@
 namespace App\Repositories;
 
 use App\Models\Product;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 
 class ProductRepository
 {
-    /**
-     * Get all products with optional filters and pagination.
-     *
-     * Supported filters:
-     * - category
-     * - location (matches seller.city or seller.region)
-     * - name (partial match)
-     * - price_min
-     * - price_max
-     * - sort_by (allowed: price, name, created_at)
-     * - sort_dir (asc|desc)
-     * - per_page (int)
-     * - seller_id (filter by seller/owner id)
-     *
-     * @param  array  $filters
-     * @return LengthAwarePaginator
-     */
     public function getAll(array $filters = []): LengthAwarePaginator
     {
         $q = Product::query()->with('seller');
@@ -34,7 +16,6 @@ class ProductRepository
             $q->where('seller_id', $filters['seller_id']);
         }
 
-        // Case-insensitive category match
         if (!empty($filters['category'])) {
             $q->whereRaw('LOWER(category) = ?', [mb_strtolower($filters['category'])]);
         }
@@ -46,7 +27,6 @@ class ProductRepository
             });
         }
 
-        // Case-insensitive search on name OR description
         if (!empty($filters['name'])) {
             $needle = $filters['name'];
             $safe = '%' . mb_strtolower($needle) . '%';
@@ -107,9 +87,9 @@ class ProductRepository
         }
 
         if (isset($data['image']) && $data['image'] instanceof \Illuminate\Http\UploadedFile) {
-            // Delete old image if exists
-            if ($product->image && Storage::disk('public')->exists($product->image)) {
-                Storage::disk('public')->delete($product->image);
+            $old = $product->getRawOriginal('image');
+            if ($old && Storage::disk('public')->exists($old)) {
+                Storage::disk('public')->delete($old);
             }
             $data['image'] = $data['image']->store('products', 'public');
         }
@@ -126,9 +106,9 @@ class ProductRepository
             return false;
         }
 
-        // Delete associated image if exists
-        if ($product->image && Storage::disk('public')->exists($product->image)) {
-            Storage::disk('public')->delete($product->image);
+        $old = $product->getRawOriginal('image');
+        if ($old && Storage::disk('public')->exists($old)) {
+            Storage::disk('public')->delete($old);
         }
 
         return (bool) $product->delete();
