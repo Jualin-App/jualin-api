@@ -34,6 +34,7 @@ class AuthController extends Controller
             'access_token' => $result['access_token'],
             'refresh_token' => $result['refresh_token'],
             'role' => $result['user']->role,
+            'firebase_token' => $this->generateFirebaseToken($result['user']->id),
         ], 201);
     }
 
@@ -46,22 +47,8 @@ class AuthController extends Controller
         }
 
         // Generate Firebase Custom Token
-        $firebaseToken = null;
-        try {
-            // Assumes 'firebase_credentials.json' is in storage/app/
-            $serviceAccountPath = storage_path('app/firebase-credentials.json');
-
-            if (file_exists($serviceAccountPath)) {
-                $factory = (new \Kreait\Firebase\Factory)->withServiceAccount($serviceAccountPath);
-                $auth = $factory->createAuth();
-                $firebaseToken = $auth->createCustomToken((string) $result['user']->id)->toString();
-            } else {
-                // Log warning if file missing, but don't crash login
-                \Illuminate\Support\Facades\Log::warning("Firebase credentials not found at: " . $serviceAccountPath);
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Firebase Token Generation Error: " . $e->getMessage());
-        }
+        // Generate Firebase Custom Token
+        $firebaseToken = $this->generateFirebaseToken($result['user']->id);
 
         return ApiResponse::success('Login success', [
             'username' => $result['user']->username,
@@ -103,7 +90,11 @@ class AuthController extends Controller
 
     public function me(): JsonResponse
     {
-        return response()->json(auth()->guard('api')->user());
+        $user = auth()->guard('api')->user();
+        if ($user) {
+            $user->firebase_token = $this->generateFirebaseToken($user->id);
+        }
+        return response()->json($user);
     }
 
     public function sendResetLinkEmail(Request $request)
@@ -141,5 +132,24 @@ class AuthController extends Controller
         return $status === Password::PASSWORD_RESET
             ? response()->json(['message' => __($status)])
             : response()->json(['message' => __($status)], 400);
+    }
+
+    private function generateFirebaseToken($userId)
+    {
+        try {
+            $serviceAccountPath = storage_path('app/firebase-credentials.json');
+
+            if (!file_exists($serviceAccountPath)) {
+                \Illuminate\Support\Facades\Log::warning("Firebase credentials not found at: " . $serviceAccountPath);
+                return null;
+            }
+
+            $factory = (new \Kreait\Firebase\Factory)->withServiceAccount($serviceAccountPath);
+            $auth = $factory->createAuth();
+            return $auth->createCustomToken((string) $userId)->toString();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Firebase Token Generation Error: " . $e->getMessage());
+            return null;
+        }
     }
 }
