@@ -198,4 +198,155 @@ class MidtransServiceTest extends TestCase
         $this->assertNull($payment->midtrans_transaction_id);
         $this->assertSame('NEW_TOKEN', $result['snap_token']);
     }
+
+    public function testCreateSnapTokenAlphaPathReturnsSpecificToken()
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldReceive('createTransaction')
+            ->once()
+            ->andReturn((object)['token' => 'snap-token-123', 'redirect_url' => 'https://pay.example/redirect']);
+
+        $customer = User::create([
+            'username' => 'custA',
+            'email' => 'john@ex.com',
+            'password' => 'pw',
+            'role' => 'customer',
+        ]);
+        $seller = User::create([
+            'username' => 'sellerA',
+            'email' => 'sellerA@example.com',
+            'password' => 'pw',
+            'role' => 'seller',
+        ]);
+        $product = Product::create([
+            'seller_id' => $seller->id,
+            'name' => 'Item A',
+            'price' => 100000,
+            'stock_quantity' => 10,
+        ]);
+        $trx = Transaction::create([
+            'customer_id' => $customer->id,
+            'seller_id' => $seller->id,
+            'total_amount' => 100000,
+            'status' => 'pending',
+        ]);
+        TransactionItem::create([
+            'transaction_id' => $trx->id,
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'price_at_purchase' => 100000,
+            'subtotal' => 100000,
+        ]);
+        $trx = $trx->fresh()->load(['items.product', 'customer']);
+
+        $service = new MidtransService();
+        $result = $service->createSnapToken($trx, ['first_name' => 'John', 'email' => 'john@ex.com']);
+
+        $this->assertSame('snap-token-123', $result['snap_token']);
+        $this->assertSame('https://pay.example/redirect', $result['snap_url']);
+        $this->assertNotEmpty($result['order_id']);
+
+        $payment = Payment::find($result['payment_id']);
+        $this->assertNotNull($payment);
+        $this->assertSame('pending', $payment->transaction_status);
+        $this->assertSame(100000.0, (float)$payment->gross_amount);
+    }
+
+    public function testCreateSnapTokenBetaPathThrowsException()
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldReceive('createTransaction')
+            ->once()
+            ->andThrow(new \Exception('Midtrans Error'));
+
+        $customer = User::create([
+            'username' => 'custB',
+            'email' => 'custB@example.com',
+            'password' => 'pw',
+            'role' => 'customer',
+        ]);
+        $seller = User::create([
+            'username' => 'sellerB',
+            'email' => 'sellerB@example.com',
+            'password' => 'pw',
+            'role' => 'seller',
+        ]);
+        $product = Product::create([
+            'seller_id' => $seller->id,
+            'name' => 'Item B',
+            'price' => 100000,
+            'stock_quantity' => 10,
+        ]);
+        $trx = Transaction::create([
+            'customer_id' => $customer->id,
+            'seller_id' => $seller->id,
+            'total_amount' => 100000,
+            'status' => 'pending',
+        ]);
+        TransactionItem::create([
+            'transaction_id' => $trx->id,
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'price_at_purchase' => 100000,
+            'subtotal' => 100000,
+        ]);
+        $trx = $trx->fresh()->load(['items.product', 'customer']);
+
+        $service = new MidtransService();
+        $this->expectExceptionMessage('Failed to create payment token: Midtrans Error');
+        $service->createSnapToken($trx, ['first_name' => 'A']);
+    }
+
+    public function testCreateSnapTokenGammaPathWithEmptyDetailsSmallAmount()
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldReceive('createTransaction')
+            ->once()
+            ->andReturn((object)['token' => 'tok', 'redirect_url' => 'https://pay.example/mini']);
+
+        $customer = User::create([
+            'username' => 'custC',
+            'email' => 'custC@example.com',
+            'password' => 'pw',
+            'role' => 'customer',
+        ]);
+        $seller = User::create([
+            'username' => 'sellerC',
+            'email' => 'sellerC@example.com',
+            'password' => 'pw',
+            'role' => 'seller',
+        ]);
+        $product = Product::create([
+            'seller_id' => $seller->id,
+            'name' => 'Item C',
+            'price' => 500,
+            'stock_quantity' => 10,
+        ]);
+        $trx = Transaction::create([
+            'customer_id' => $customer->id,
+            'seller_id' => $seller->id,
+            'total_amount' => 500,
+            'status' => 'pending',
+        ]);
+        TransactionItem::create([
+            'transaction_id' => $trx->id,
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'price_at_purchase' => 500,
+            'subtotal' => 500,
+        ]);
+        $trx = $trx->fresh()->load(['items.product', 'customer']);
+
+        $service = new MidtransService();
+        $result = $service->createSnapToken($trx, []); // empty details
+
+        $this->assertSame('tok', $result['snap_token']);
+        $this->assertSame('https://pay.example/mini', $result['snap_url']);
+        $this->assertNotEmpty($result['order_id']);
+
+        $payment = Payment::find($result['payment_id']);
+        $this->assertNotNull($payment);
+        $this->assertSame('pending', $payment->transaction_status);
+        $this->assertSame(500.0, (float)$payment->gross_amount);
+    }
 }
